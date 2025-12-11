@@ -59,7 +59,7 @@ def get_CIFAR10_data(
     y_val = y_train[mask]
     mask = list(range(num_training))
     X_train = X_train[mask]
-    y_train = X_train[mask]
+    y_train = y_train[mask]
     mask = list(range(num_test))
     X_test = X_test[mask]
     y_test = y_test[mask]

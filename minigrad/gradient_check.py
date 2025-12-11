@@ -22,10 +22,10 @@ def eval_numerical_gradient(f, x, verbose=True, h=0.00001):
         ix = it.multi_index
         oldval = x[ix]
         x[ix] = oldval + h # increment by h
-        fxph = f(x)
+        fxph = f(x) # evalute f(x + h)
         x[ix] = oldval - h
         fxmh = f(x) # evaluate f(x-h)
-        x[i] = oldval # restore
+        x[ix] = oldval # restore
 
         #compute the partial derivative with centred formula
         grad[ix] = (fxph - fxmh) / ( 2 * h ) # the slope

@@ -1,0 +1,30 @@
+The momentum method
+
+equations:
+v(t) = a*(v(t-1)) - epsilon*grad(t)
+delta[w(t)] = v(t) : the weight change is equal to the current velocity
+            = a*v(t-1) - epsilon*grad(t)
+            = a*w(t-1) - epsilon*grad(t)
+
+*Behavior of the momentum method
+if the error sufface is a tilted plan, the ball reaches a terminal velocity.
+(if the momentum is close to 1, this is much faster than simple gradient descent)
+At the begining of learning there may be very large gradients.
+- So it pays to use small momentum (eg 0.5)
+- Once the large grdients have disappeared and the weights are stuck in a ravine the
+momentum can be smooth ly raised to its final value (eg 0.9 or even 0.99)
+This allow to learn at a rate that would cause divergent oscillations without the
+momentum.
+v(inf) =  (1/1-a) * (-epsilon*grad)
+
+** A better type of momentum (Nesterov 1983)
+First make a big jump in the direction of the previous accumulated gradient.
+Then measure the gradient where you end up and make a correction
+(its better to correct a mistake after you have made it!!!)
+
+
+** A separate, adaptive learning rate for each connection
+In a multilayer net, the appropriate learning rates can vary widely between weights:
+- The magnitudes of the gradients are oftern very different for different layers,
+especially if the initial weights are small.
+- The fan0n of a unit determines the size of the "overshoot" effects cause by stimultaneously

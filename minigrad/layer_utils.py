@@ -26,7 +26,7 @@ def affine_relu_backward(dout, cache):
     dx, dw, db = affine_backward(da, fc_cache)
     return dx, dw, db
 
-def generic_forward(x, w, b, last=None):
+def generic_forward(x, w, b, dropout_param=None, last=None):
     """Convenience layer that performs an affine transform, a batch/layer normalization
 
     Inputs:
@@ -39,18 +39,22 @@ def generic_forward(x, w, b, last=None):
     - cache: Object to give to backward pass
     """
     # Initialize optinal cache to None
-    relu_cache = None
+    relu_cache, dropout_cache = None, None
     out, fc_cache = affine_forward(x, w, b)
     if not last:
         out, relu_cache = relu_forward(out)
-    cache = fc_cache, relu_cache
+        if dropout_param is not None:
+            out, dropout_cache = dropout_forward(out, dropout_param)
+    cache = fc_cache, relu_cache, dropout_cache
     return out, cache
 
 def generic_backward(dout, cache):
     """
     Backward pass for the generic convenience layer
     """
-    fc_cache, relu_cache = cache
+    fc_cache, relu_cache, dropout_cache = cache
+    if dropout_cache is not None:
+        dout = dropout_backward(dout, dropout_cache)
     if relu_cache is not None:
         dout = relu_backward(dout, relu_cache)
     dx, dw, db = affine_backward(dout, fc_cache)

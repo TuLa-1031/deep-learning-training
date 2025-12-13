@@ -27,4 +27,44 @@ Then measure the gradient where you end up and make a correction
 In a multilayer net, the appropriate learning rates can vary widely between weights:
 - The magnitudes of the gradients are oftern very different for different layers,
 especially if the initial weights are small.
-- The fan0n of a unit determines the size of the "overshoot" effects cause by stimultaneously
+- The fan-in of a unit determines the size of the "overshoot" effects cause by stimultaneously
+changing many of the incoming weights of a unit to correct the same error.
+
+* One way to determine the individual learning rates
+- Start with a loval gain of 1 for every weight.
+- Increase the local gain if the gradient for that weight does not change sign.
+- Use small additive increases and multiplicative decrease (for mini-batch)
+    + This ensures that big gains decay rapidly when oscillations start.
+    + If the gradient is totally random the gain will hover around 1 when we increases
+    by plus delta half the time and decrease by times 1-delta half the time.
+
+** RMSprop: Divide the gradient by a running avearage of its recent magnitudes
+*Rprop: Using only the sign of the gradient
+The mignitude of the grdient can be very different for different wieghts and can change
+during learning.
+- This makes it hard to choose a single global learning rate.
+For full batch learning, we can deal with this variation by only using the sign of the
+gradient.
+- The weight updates are all of the same magnitude.
+- This escapes from plateaus with tiny gradient quickly.
+Rprop: This combines the idea of only using the gradient with the idea of adapting the
+step size separately for each weight.
+- Increase the step size for a weight multiplicatively(eg times 1.2) if the signs of
+its last two gradientts agree.
+- Otherwise decrease the step size multiplicatively(egtime0.5)
+- Limit the step sizes to be less than 50 and more than a million (Mike Shuster's advice)/
+
+* Why rprop does not work with mini-batches
+The idea behind stochastic gradient descent is that when the lr is small, it averages the
+gradientns over the successive mini-batches
+- Consider a weight that gets a gradient of +0.1 on nine mini-batches and a gradient of
+-0.9 on the tenth mini-batch.
+- We want this weight to stay rougly where it is.
+rprop would increment the weight niine times and decrement it once by the same amount
+- So the weight would grow a lot.
+Is there a way to combine:
+- The robustnees of rprop.
+- The efficiency of mini-batches
+- The effective averaging of gradients over mini-batches.
+
+*RmsProp: A mini-batch version of rprop

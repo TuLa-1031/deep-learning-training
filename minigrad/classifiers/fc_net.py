@@ -213,8 +213,9 @@ class FullyConnectedNet(object):
         for l in range(self.num_layers):
             keys = [f'W{l+1}', f'b{l+1}']
             w, b = (self.params.get(k, None) for k in keys)
+            do = self.dropout_param if self.use_dropout else None
 
-            X, cache[l] = generic_forward(X, w, b, l==self.num_layers-1)
+            X, cache[l] = generic_forward(X, w, b, do, l==self.num_layers-1)
         scores = X
 
         if mode == "test":

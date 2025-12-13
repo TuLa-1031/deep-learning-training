@@ -98,7 +98,7 @@ def rmsprop(w, dw, config=None):
 
 def adam(w, dw, config=None):
     """
-    Ues the Adam update ruel, which incorporates moving averages of both the gradient
+    Ues the Adam update rule, which incorporates moving averages of both the gradient
     and its square and a bias correction term.
 
     config format:
@@ -139,4 +139,41 @@ def adam(w, dw, config=None):
     vt = v / (1 - b2**t)
     next_w = w - lr * mt / (np.sqrt(vt) + eps)
 
+    return next_w, config
+
+def adamw(w, dw, config):
+    """
+    Uses the AdamW update rule, which incorparates moving average of both the gradient
+    and its square and a bias correctiont term.
+
+    config format:
+    - learning_rate: Scalar learning rate.
+    - beta1: Decay rate for moving averege of first moment of gradient.
+    - beta2: Decay rate for moving average of secound moment of gradient.
+    - epsilon: Small scalar used for smoothing to avoid dividing by zero.
+    - m: Moving average of gradient.
+    - v: Moving average of squared gradient.
+    - t: Iteration number.
+    """
+    if config is None:
+        config = {}
+    config.setdefault("learning_rate", 1e-3)
+    config.setdefault("beta1", 0.9)
+    config.setdefault("beta2", 0.999)
+    config.setdefault("epsilon", 1e-8)
+    config.setdefault("m", np.zeros_like(w))
+    config.setdefault("v", np.zeros_like(w))
+    config.setdefault("t", 0)
+    config.setdefault("weight_decay", 1e-2)
+
+    next_w = None
+    keys = ['learning_rate', 'beta1', 'beta2', 'epsilon', 'm', 'v', 't', 'weight_decay']
+    lr, b1, b2, eps, m, v, t, weight_decay = (config.get(k) for k in keys)
+    next_w = w - weight_decay*lr*w
+    config['t'] = t = t + 1
+    config['m'] = m = b1*m + (1-b1)*dw
+    config['v'] = v = b2*v + (1-b2)*dw**2
+    m_hat = m / (1 - b1**t)
+    v_hat = v / (1 - b2**t)
+    next_w = next_w - lr* m_hat / (np.sqrt(v_hat) + eps)
     return next_w, config

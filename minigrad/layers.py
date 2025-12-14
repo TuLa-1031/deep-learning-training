@@ -169,3 +169,122 @@ def dropout_backward(dout, cache):
     elif mode == "test":
         dx = dout
     return dx
+
+def batchnorm_forward(x, gamma, beta, bn_param):
+    """Forward pass for batch normalization
+    
+    During training the sample mean and (uncorrected) sample variance are
+    computed from minibatch statistics and used to normalize the incoming data.
+    During training we also keep an exponentially decaying running mean of the
+    mean and variance of each feature, and these averages are used to normalize
+    data at test-time
+    
+    At each timestep we update the running averages for mean and variance using
+    an exponential decay based on the momentum parameter:
+    
+    running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+    running_var = momentum * running_var + (1 - momentum) * sample_var
+    
+    Note that the batch normalization paper suggests a different test-time
+    behavior: they comput sample mean and variance for each feature using a
+    large number of training images rather than using a running average. For
+    this implementation we have chosen to use running averages instead since
+    they do not require an additional estimation setp: the torch7 implementation
+    of batch normalization also uses running averages/
+    
+    Input:
+    - x: Data of shape (N, D)
+    - gamma: Scale parameter of shape (D,)
+    - beta: Shift parameter of shape (D,)
+    - bn_param: Dictionary with the following keys:
+        - mode: 'train' or 'test'; required
+        - eps: Constant for numeric stability
+        - momentum: Constant for running mean / variance.
+        - running_var: Array of shape (D,) giving running variance of features
+        
+    Returns a tuple of:
+    - out: of shape (N, D)
+    - cache: A tuple of values needed in the backward pass
+    """
+    mode = bn_param["mode"]
+    eps = bn_param.get("eps", 1e-5)
+    momentum = bn_param.get("momentum", 0.9)
+
+    N, D = x.shape
+    running_mean = bn_param.get("running_mean", np.zeros(D, dtype=x.dtype))
+    running_var = bn_param.get("running_var", np.zeros(D, dtype=x.dtype))
+    out, cache = None, None
+    if mode == "train":
+        mu = x.mean(axis=0)
+        var = x.var(axis=0)
+        std = np.sqrt(var + eps)
+        x_hat = (x - mu) / std
+        out = gamma * x_hat + beta
+        shape = bn_param.get('shape', (N, D))
+        axis = bn_param.get('axis', 0)
+        cache = x, mu, var, std, gamma, x_hat, shape, axis
+        
+        if axis == 0:
+            running_mean = momentum * running_mean + (1 - momentum) * mu
+            running_var = momentum * running_var + (1 - momentum) * var
+    elif mode == "test":
+        x_hat = (x - running_mean) / np.sqrt(running_var + eps)
+        out = gamma * x_hat + beta
+    else:
+        raise ValueError('Invalid forward batchnorm mode "%s"' % mode)
+    
+    # Store the updated running means back into bn_param
+    bn_param["running_mean"] = running_mean
+    bn_param["running_var"] = running_var
+
+    return out, cache
+
+def batchnorm_backward(dout, cache):
+    """Backward pass for batch normalization.
+    
+    Inputs:
+    - dout: upstream derivatives, of shape (N, D)
+    - cache: Variable of intermediates from batchnorm_forward.
+    
+    Returns a tuple of:
+    - dx: Gradient with respect to inpus x, of shape (N, D)
+    - dgamma: Gradient with respect to scale parameter gamma, of shape (D,)
+    - dbeta: Gradient with respect to shift parameter beta, of shape (D,)
+    """
+
+    dx, dgamma, dbeta = None, None, None
+    x, mu, var, std, gamma, x_hat, shape, axis = cache
+
+    dbeta = dout.reshape(shape, order='F').sum(axis)
+    dgamma = (dout * x_hat).reshape(shape, order='F').sum(axis)
+
+    dx_hat = dout * gamma
+    dstd = -np.sum(dx_hat * (x-mu), axis=0) / (std**2)
+    dvar = 0.5 * dstd / std
+    dx1 = dx_hat / std + 2 * (x-mu) * dvar / len(dout)
+    dmu = -np.sum(dx1, axis=0)
+    dx2 = dmu / len(dout)
+
+    dx = dx1 + dx2
+    return dx, dgamma, dbeta
+
+def batchnorm_backward_alt(dout, cache):
+    """Alternative backward pass for batch normalization
+    
+    Inputs:
+    - dout: upstream derivatives, of shape (N, D)
+    - cache: Variable of intermediates from batchnorm_forward.
+    
+    Returns a tuple of:
+    - dx: Gradient with respect to inpus x, of shape (N, D)
+    - dgamma: Gradient with respect to scale parameter gamma, of shape (D,)
+    - dbeta: Gradient with respect to shift parameter beta, of shape (D,)
+    """
+    dx, dgamma, dbeta = None, None, None
+    x, mu, var, std, gamma, x_hat, shape, axis = cache
+    S = lambda x: x.sum(axis=0)
+    dbeta = dout.reshape(shape, order='F').sum(axis)
+    dgamma = (dout * x_hat).reshape(shape, order='F').sum(axis)
+    dx = dout * gamma / (len(dout)*std)
+    dx = len(dout)*dx - S(dx*x_hat)*x_hat - S(dx)
+    return dx, dgamma, dbeta

@@ -26,7 +26,7 @@ def affine_relu_backward(dout, cache):
     dx, dw, db = affine_backward(da, fc_cache)
     return dx, dw, db
 
-def generic_forward(x, w, b, dropout_param=None, last=None):
+def generic_forward(x, w, b, dropout_param=None, gamma=None, beta=None, bn_param=None, last=None):
     """Convenience layer that performs an affine transform, a batch/layer normalization
 
     Inputs:
@@ -39,23 +39,29 @@ def generic_forward(x, w, b, dropout_param=None, last=None):
     - cache: Object to give to backward pass
     """
     # Initialize optinal cache to None
-    relu_cache, dropout_cache = None, None
+    relu_cache, dropout_cache, bn_cache = None, None, None
     out, fc_cache = affine_forward(x, w, b)
     if not last:
+        if bn_param is not None:
+            if 'mode' in bn_param:
+                out, bn_cache = batchnorm_forward(out, gamma, beta, bn_param)
         out, relu_cache = relu_forward(out)
         if dropout_param is not None:
             out, dropout_cache = dropout_forward(out, dropout_param)
-    cache = fc_cache, relu_cache, dropout_cache
+    cache = fc_cache, relu_cache, dropout_cache, bn_cache
     return out, cache
 
 def generic_backward(dout, cache):
     """
     Backward pass for the generic convenience layer
     """
-    fc_cache, relu_cache, dropout_cache = cache
+    dgamma, dbeta = None, None
+    fc_cache, relu_cache, dropout_cache, bn_cache = cache
     if dropout_cache is not None:
         dout = dropout_backward(dout, dropout_cache)
     if relu_cache is not None:
         dout = relu_backward(dout, relu_cache)
+    if bn_cache is not None:
+        dout, dgamma, dbeta = batchnorm_backward_alt(dout, bn_cache)
     dx, dw, db = affine_backward(dout, fc_cache)
-    return dx, dw, db
+    return dx, dw, db, dgamma, dbeta

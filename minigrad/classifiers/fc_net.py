@@ -211,11 +211,12 @@ class FullyConnectedNet(object):
 
         cache = {}
         for l in range(self.num_layers):
-            keys = [f'W{l+1}', f'b{l+1}']
-            w, b = (self.params.get(k, None) for k in keys)
+            keys = [f'W{l+1}', f'b{l+1}', f'gamma{l+1}', f'beta{l+1}']
+            w, b, gamma, beta = (self.params.get(k, None) for k in keys)
+            bn = self.bn_params[l] if gamma is not None else None
             do = self.dropout_param if self.use_dropout else None
 
-            X, cache[l] = generic_forward(X, w, b, do, l==self.num_layers-1)
+            X, cache[l] = generic_forward(X, w, b, do,gamma, beta, bn, l==self.num_layers-1)
         scores = X
 
         if mode == "test":
@@ -225,9 +226,12 @@ class FullyConnectedNet(object):
         loss, dout = softmax_loss(scores, y)
         loss += 0.5 * self.reg * np.sum([np.sum(W**2) for k, W in self.params.items() if 'W' in k])
         for l in reversed(range(self.num_layers)):
-            dout, dW, db = generic_backward(dout, cache[l])
+            dout, dW, db, dgamma, dbeta = generic_backward(dout, cache[l])
             grads[f'W{l+1}'] = dW + self.reg * self.params[f'W{l+1}']
             grads[f'b{l+1}'] = db
+            if dgamma is not None and l < self.num_layers-1:
+                grads[f'gamma{l+1}'] = dgamma
+                grads[f'beta{l+1}'] = dbeta
         return loss, grads
 
     def save(self, fname):
